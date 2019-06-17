@@ -1,0 +1,173 @@
+---
+title: "World Happiness"
+author: "Linda Jones"
+date: "6/10/2019"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+setwd("~/R/Dataset")
+WorldHappiness<- read.csv("~/R/Dataset/WorldHappiness Capstone.csv")
+View(WorldHappiness)
+WorldHappiness<- read.csv("~/R/Dataset/WorldHappiness Capstone.csv")
+View(WorldHappiness)
+attach(WorldHappiness)
+```
+#INTRODUCTION 
+
+This report is being submitted to satisfy the “Choose-your-own-project” Capstone Project requirements of the ‘HarvardX: PH125.9x Data Science course. The World Happiness 2017 dataset available on Kaggle (https://www.kaggle.com/unsdsn/world-happiness) was used for this project. The goal was to use R and RStudio and employ skills learned during the course to create a machine learning algorithm that could help solve a problem.
+
+#OVERVIEW
+
+The World Happiness Report is genersted by the United Nations Sustainable Development Solution Network. There are a total of six factors the study uses to calculate happiness in 2017. The six factors are economy, family, health, freedom, trust, and generosity. The six factors were added together to generate the happiness score. The total happiness score is used to determine a countries happiness rank. The highest World Happiness score receives a ranking of one (1). The happiness scores are ranked in descending order from largest to smallest. The World Happiness report suggests that happiness in the United States is falling as a result of social issues. Therefore, the goal for this study is to determine the correlation between happiness.Score, freedom and family.  
+
+The freedom and family variables were chosen because these two variables are aligned with, or affected by social issues. A multiple linear regression model is used to predict the likelihood of a countries ranking for overall happiness improving when  freedom and family receive high scores.  The data is also assessed against the Pearson correlation coefficient.
+
+This report has five parts: (1) Dataset Description, (2) Data Exploration, (3) Methods & Analysis, (4) Results, and (5) Conclusion. The data’s dimensions and attributes are assessed in the dataset exploration section to ensure it is suitable for the intended purpose. In the data exploration section, data attributes, such as the country, happiness.Score, and freedom are explored. The methods employed to predict the ranking and the corresponding analysis are presented in the methods and analysis section. The final sections of the report present the results and conclusion.
+
+#DATASET DESCRIPTION
+
+A Worldhappiness 2017 dataset was used for this project. The excel file was converted into cvs format and set as the working directory. Then the file was imported as a text file so it could be attached to the file making it available for others to view the data and run the script in R. The following libraries were also loaded:
+
+#load libraries
+library(glm2)
+library(caret)
+library(rpart)
+library(caret)
+library(dplyr)
+library(MASS)
+library(ggplot2)
+library(reshape2)
+
+#DATA EXPLORATION
+
+Exploring the data involved looking at variables and examining them for accuracy, completeness, emerging patters and to ensure the data can support the statistical analysis. Results of the examination appear below.
+
+#View the headers
+```{r}
+head(WorldHappiness)
+```
+
+#View the dimension of the dataset
+```{r}
+dim(WorldHappiness)
+```
+
+#View the dataset attributes - class
+```{r}
+sapply(WorldHappiness,class)
+```
+
+#Summary of WorldHappiness 2017 dataset
+```{r}
+summary(WorldHappiness)
+```
+
+#Review the structure of the WorldHappines 2017 dataset
+```{r}
+str(WorldHappiness)
+```
+The data is deemded sufficient and ready for analysis after exploring the data, visually inspecting it, and verifying nothing is missing.
+
+#METHODS & ANALYSIS
+
+Multiple linear regression is appropriate to investigate more than one variable. Multiple linear regression goes beyond simple linear regression because it uses two or more variables and can be linear or nonlinear. For this project, the two independent variables are family and freedom. Freedom and family are the x variable and Happiness.Score is the y variable. The goal is to determine if increased levels of freedom and family result in an improved happiness score.
+
+#Multiple Linear Regression 
+#Create a scatterplot with freedom and family as the x value and happiness.score as the y value to visualize the data
+```{r}
+plot(WorldHappiness$Freedom+WorldHappiness$Family,WorldHappiness$Happiness.Score,main="Happiness Score and Freedom",col="dark green", xlab="Freedom & Family /n Figure 1")
+```
+
+#Correlation the relationsip between Freedom and Family and happiness.score
+```{r}
+cor(WorldHappiness$Freedom+WorldHappiness$Family,WorldHappiness$Happiness.Score)
+```
+
+The correlation is .0817802, which indicates that there is variation around the line of best fit. When assessed together there appers to be a negative correlation between freedom, family and the happiness.Score. This suggests that as one one variable decreasess in value the other will increase. However, does not imply that there is a cause and effect relationship between these two specific variables. There are four other variables that contribute to the happiness score.
+
+#Fit the linear regression model. Using this to scale the relationship between the freedom,family and generosity (x) and happiness.Score (y)
+```{r}
+lr_model<-lm(WorldHappiness$Happiness.Score~WorldHappiness$Freedom+WorldHappiness$Family)
+lr_model
+```
+
+A correlation test was performed to assess the association between freedom and family. When using the cor.test function, the Pearson's Correlation is the default.  Results appear below:
+
+```{r}
+cor.test(WorldHappiness$Freedom,WorldHappiness$Family)
+```
+#Plot Pearson's product-moment correlation
+```{R}
+cor(WorldHappiness[,6:12])
+plot((WorldHappiness[,6:12]))
+```
+
+We assess the scatterplots to identify values of zero becuase this indicates the variables are not associated. Values above zero are indicative of positive associations between the variables while negative values are indicative of an inverse relationship between variables, which means as one increases the other decreases. Unlike multiple linear regression, the Pearson’s Correlation does not distinguish between the dependent and independent variables. In this plot all six variables appear making it easier to visually inspect the data to determine which, if any, of the variables have a postivie correlation.
+
+#summary of the model results
+```{r}
+summary(lr_model)
+```
+The standard error in this model is .2522. The slope for freedom is 1.4532. The Root Means Squared Error or Residual standard error is 0.6818 on 151 degrees of freedom.
+
+
+#Scatterplot with Freedom
+```{r}
+plot(WorldHappiness$Freedom+WorldHappiness$Family,WorldHappiness$Happiness.Score,main="Scatterplot of Freedom & Happiness Score",pch=17, col="orange",xlab="Freedom \n Figure 1")
+abline(lr_model)
+```
+
+There appears to be a linear relationship between freedom, family and the happiness score.
+
+```{r}
+par(mfrow=c(1,2))
+plot(WorldHappiness$Freedom,WorldHappiness$Happiness.Score,main="Scatterplot of Freedom & Happiness Score",pch=17, col="orange",xlab="Freedom \n Figure 1")
+abline(lr_model)
+plot(WorldHappiness$Family,WorldHappiness$Happiness.Score,main="Scatterplot of Freedom & Happiness Score",pch=7, col="blue",xlab="Freedom \n Figure 2")
+abline(lr_model)
+```
+
+#Identify the coefficient intercept
+```{r}
+confint(lr_model)
+```
+
+This value helps to determine or measure the usefulness of the regression prediction. Based on the results there is a 97.5% likelihood that freedom and family will be within the confidence interval of the regression line.
+
+#Identify the model coefficient
+```{r}
+coef(lr_model)
+```
+The coefficient value is used to measure the strength of the linear relationship between freedom, family, and the happiness score. Based on the results the intercept is 3.596327. 
+
+```{r}
+anova(lr_model)
+```
+
+#Plot the lr_model  
+```{r}
+plot(lr_model)
+abline(lr_model)
+par(mfrow=c(2,2))
+```
+The residual vs fitted graph shows that happiness scores between 3.5 and 5.0 are more linear than happiness scores between 5.0 and 6.5. By looking at the QQ plot, we see that the errors are normally distributed because most of the variables align with the regression line.
+
+#Make a prediction
+```{r}
+predict(lr_model)
+```
+
+#RESULTS
+
+Based on the results, this model has a good confidence level and can be used to make predictions.
+
+#CONCLUSION
+
+The algorithm can to predict happiness based on the level of freedom and family with a confidence level of 97.5%, making this a good model. There are six factors that contribute to the happiness score. Further analysis investigating the effects of multiple variables on the happiness score may prove to provide useful information for the researchers associated with the study. They may find that some variables influence happiness more than others.
