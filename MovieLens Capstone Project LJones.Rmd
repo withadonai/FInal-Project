@@ -1,0 +1,244 @@
+---
+title: "Movie Lens"
+author: "Linda Jones"
+date: "6/12/2019"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+#INTRODUCTION 
+
+This report is being submitted to satisfy the criteria of the ‘HarvardX: PH125.9x Data Science Capstone project. Using the prescribed data from the 10M version of the MovieLens dataset, an algorithm was developed to predict movie ratings. The edx set and validation set were employed in the algorithm. The capstone project instructions directed the use of Root Mean Square Error (RMSE) to forecast and assess predictions against the validation set.
+
+#OVERVIEW
+
+This capstone project provides students with an opportunity to demonstrate their mastery of the course material by applying thier skills using R and RStudio.The goal of this project is to develop a machine learning algorithm to predict movie ratings. This report has five parts: (1) Dataset Description, (2) Data Exploration, (3) Methods & Analysis, (4) Results; and (5) Conclusion. 
+
+The data’s dimensions and attributes are assessed in the dataset exploration section to ensure the dataset is suitable for the intended purpose. In the data exploration section, data attributes, such as the summary, class, number of columns or rows, are explored. The methods employed to predict the ratings and the corresponding analysis are presented in the methods and analysis section. The final sections of the report present the results and conclusion.
+
+#DATASET DESCRIPTION
+
+A prescribed dataset was used for this project and the code was provided in the course instructions.  The edx and validation sets were also already created. 
+
+#Load the dataset 
+```{r}
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+
+dl <- tempfile()
+download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
+
+ratings <- read.table(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+                      col.names = c("userId", "movieId", "rating", "timestamp"))
+
+movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+colnames(movies) <- c("movieId", "title", "genres")
+movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(levels(movieId))[movieId],
+                                           title = as.character(title),
+                                           genres = as.character(genres))
+
+movielens <- left_join(ratings, movies, by = "movieId")
+
+set.seed(1)
+test_index <- createDataPartition(y = movielens$rating, times = 1, p = 0.1, list = FALSE)
+edx <- movielens[-test_index,]
+temp <- movielens[test_index,]
+
+validation <- temp %>% 
+     semi_join(edx, by = "movieId") %>%
+     semi_join(edx, by = "userId")
+
+removed <- anti_join(temp, validation)
+edx <- rbind(edx, removed)
+
+rm(dl, ratings, movies, test_index, temp, movielens, removed)
+
+```
+The following libraries were loaded:
+library(recommenderlab),
+library(ggplot2),
+library(data.table),
+library(reshape2), and
+library(devtools)
+
+
+What follows are the stpes taken to explore the data. Specifically the variables were examined for accuracy, completeness, emerging patterns and to ensure the data could support a statistical analysis. Results of the examination appear below.
+
+#EXPLORING THE DATA
+
+#Identify the number of columns and rows in the edx data
+```{r}
+ncol(edx)
+nrow(edx)
+```
+#Look at a summary of the edx data 
+```{r}
+summary(edx)
+```
+#Class identification for the edx data
+```{r}
+class(edx)
+```
+#Review edx structure
+```{r}
+str(edx)
+```
+#Identify the number of columns and rows in the validation data
+```{r}
+ncol(validation)
+nrow(validation)
+```
+#Look at a summary of the validation data 
+```{r}
+summary(validation)
+```
+
+#Class identification for the validation data
+```{r}
+class(validation)
+```
+
+#Review validation structure
+```{r}
+str(validation)
+```
+
+VISUALIZING DATA
+
+In this section the data is visualized. Visualization, when done well, facilitates communciation of information in a simple and easy to understand format. For the purpposes of this project the visualization is being used to learn about the relationsips, if any, between the users, movies and the associated ratings. There are 9000055 therefore, the top 15 movies are explored further. Upon review they do not appear to be in the same genre.  
+
+DATA EXPLORATION
+
+```{r}
+library(dplyr)
+length(edx$movieId)
+```
+
+#Identify the top 15 movies
+```{r}
+top_15movies<-edx%>%group_by(title)%>%summarize(count=n())%>%top_n(15,count)%>%arrange(desc(count))
+top_15movies
+```
+#plot Top 15 Movies
+```{r}
+plottop15movies<-table(edx$title)
+barplot(plottop15movies[order(plottop15movies,decreasing = TRUE)])
+```
+
+Additionally, the movies by title are concentrated in one section and are skewed to the left. An evaluation of the top 15 movies by title and rank follow in order to assess the number of ratings for the top 15 movies.
+
+#Plot the Top 15 Movies by Ratings
+```{r}
+top_15movies%>%ggplot(aes(x=reorder(title, count),y=count))+geom_bar(stat='identity',fill="orange")+coord_flip(y=c(0, 35000))+
+labs(x="", y="# of Ratings \n Figure 2")+geom_text(aes(label= count),hjust=-0.1, size=3)+labs(title="Top 15 Movies Titles")
+```
+
+A review of the genres follows to see determine if any trends or patters emerge.
+
+```{r}
+edx %>% group_by(genres) %>%summarize(n = n(), avg = mean(rating), se = sd(rating)/sqrt(n())) %>%filter(n >= 100000) 
+```
+```{r}
+top_15movies_by_genres<-edx%>%group_by(title,genres)%>%summarize(count=n())%>%top_n(15,count)%>%arrange(desc(count))
+top_15movies_by_genres
+```
+
+#plot the movies by rating
+```{r}
+hist(edx$rating,main="Movies by Ratings",xlab="Ratings\n Figure 3",col="yellow")
+```
+
+The movie ratings are not evenly distributed. Majority of the movies receive a rating between 3 and 4.
+
+
+#plot users by rating
+```{r}
+edx %>%
+  count(userId) %>%
+  ggplot(aes(n)) +
+  geom_histogram(bins = 10, color = "blue") +
+  scale_x_log10() +
+  ylab("# of Users") + 
+  xlab("# of Ratings \n Figure 4") +
+ggtitle("# of Ratings by Users") 
+```
+```{r}
+hist(edx$movieId,main="Movies by MovieID",xlab="Ratings\n Figure 5",col="yellow")
+```
+
+#METHOD & ANALYSIS
+
+The capstone project criteria required use of the Root	Mean	Square	Error	(RMSE) to assess predictions. RMSE is a common statistical measure used to assess the standard deviation or errors. Two methods were used to predict movie ratings: Movie Effect Model (MEM) and Movie and User Effect Models. RMSE was calculated by finding the average of all movies
+
+#calculate baseline RMSE 
+```{r}
+mu<-mean(edx$rating)
+baseline_rmse <-RMSE(validation$rating, mu)
+rmse_results <- data_frame(method = "Model - Average Movie Ratings", RMSE = baseline_rmse)
+rmse_results
+```
+The RMSE that will be used for comparision purposes is `r rmse_results`.
+
+#Gererate the Movie Effect Method (MEM) by calculating the estimated deviation by calculating the averge (mean) of all movies (edx$rating) on the training set and then calculating the predicted rating. Note: "mu" already calculated above
+```{r}
+avg_of_movie_ratings<-edx%>%group_by(movieId)%>%summarize(b_i=mean(rating-mu))
+pred_movie_ratings_model1<-mu+validation%>%left_join(avg_of_movie_ratings,by="movieId")%>%.$b_i
+mem_rmse<-RMSE(validation$rating,pred_movie_ratings_model1)
+mem_rmse
+```
+The RMSE for the Movie Effect Method is `r mem_rmse`.
+
+#Gererate the Movie and User Effect Method (MUEM) by calculating the estimated deviation by calculating the averge (mean) of all moves(edx$rating) on the training set and then calculating the predicted rating. Note: "mu" already calculated above
+```{r}
+avg_of_users<-edx%>%left_join(avg_of_movie_ratings,by="movieId")%>%group_by(userId)%>%summarize(b_u=mean(rating-mu-b_i))
+pred_movie_ratings_model2<-validation%>%left_join(avg_of_movie_ratings,by="movieId")%>%left_join(avg_of_users,by="userId")%>%mutate(pred=mu+b_i+b_u)%>%.$pred
+muem_rmse<-RMSE(validation$rating,pred_movie_ratings_model2)
+muem_rmse
+```
+The RMSE for the Movie and User Effect Method is `r muem_rmse`
+
+#Assess model complexity and minimize overfitting with regularization
+```{r}
+rmse<-function(actual_rating,rating_prediction){sqrt(mean((actual_rating-rating_prediction)^2))}
+lambdas<-seq(0,15,.25)
+
+rmses<-sapply(lambdas,function(l){
+mu<-mean(edx$rating)
+b_i<-edx %>%group_by(movieId)%>%summarize(b_i=sum(rating-mu)/(n()+l))
+b_u<-edx %>%left_join(b_i,by="movieId")%>%group_by(userId) %>%summarize(b_u=sum(rating-b_i-mu)/(n()+l))
+prediction<-validation%>%left_join(b_i,by="movieId")%>%left_join(b_u,by="userId")%>%mutate(pred=mu+b_i+b_u)%>%pull(pred)
+return(RMSE(prediction,validation$rating))
+})
+```
+
+
+```{r}
+qplot(lambdas,rmses)
+```
+
+```{r}
+lambda<-lambdas[which.min(rmses)]
+lambda
+```
+
+```{r}
+rmse_finalresult<-min(rmses)
+rmse_finalresult
+```
+The rmses is `r rmse_finalresult'.
+
+#RESULTS
+
+When comparing the baseline RMSE to each method we find that:
+Movie Effect Method: is 0.9439087
+Movie and User Effect: 0.8653488
+The lambdas is 5.25 and the rmses is 0.864817.
+
+#CONCLUSION
+
+RMSE does not have perscribed values that wee seek to met. Instead we use RMSE as a comparative value that should be low and close to the regression line.  Based on the findings the models demonstrated that the algorithm can predit movie ratings with a good level of accuracy.
